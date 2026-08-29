@@ -1,0 +1,805 @@
+{
+  "manifest_schema_version": 3,
+  "sdk_version": "5.13.0",
+  "app_id": "freshbooks-connector",
+  "version": "0.1.0",
+  "name": "FreshBooks",
+  "description": "Connect your own FreshBooks account(s) (OAuth2) to manage clients, invoices, expenses, estimates, items, and payments -- full read/write plus value-add revenue overview and overdue-invoice reports.",
+  "icon": "icon.svg",
+  "actions_explicit": true,
+  "system": false,
+  "capabilities": [
+    "freshbooks:read",
+    "freshbooks:write"
+  ],
+  "tools": [
+    {
+      "name": "connect_freshbooks",
+      "description": "Start connecting your FreshBooks account(s): register your FreshBooks app's Client ID/Client Secret, then get back a one-time browser authorize_url. Open it, sign in with FreshBooks, pick the business(es) to grant access to, and approve -- FreshBooks redirects back here automatically and the connection finishes itself, no further action needed.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "freshbooks.connection.pending"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "client_id": {
+            "default": "",
+            "description": "Your FreshBooks app's Client ID (my.freshbooks.com/#/developer).",
+            "title": "Client Id",
+            "type": "string"
+          },
+          "client_secret": {
+            "default": "",
+            "description": "Your FreshBooks app's Client Secret.",
+            "title": "Client Secret",
+            "type": "string"
+          },
+          "redirect_uri": {
+            "default": "",
+            "description": "The redirect URI registered on your FreshBooks app.",
+            "title": "Redirect Uri",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "description": "Optional friendly label for this connection, e.g. 'Acme Inc FreshBooks'.",
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "title": "ConnectFreshbooksParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "authorize_url": {
+            "default": "",
+            "title": "Authorize Url",
+            "type": "string"
+          },
+          "pending_id": {
+            "default": "",
+            "title": "Pending Id",
+            "type": "string"
+          }
+        },
+        "title": "ConnectFreshbooksResult",
+        "type": "object"
+      },
+      "event": "freshbooks-connector.connect",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "freshbooks"
+    },
+    {
+      "name": "list_connections",
+      "description": "List the connected FreshBooks accounts.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "description": "Explicit empty params model -- V17 disallows untyped handlers.",
+        "properties": {},
+        "title": "NoParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "$defs": {
+          "ProviderAccount": {
+            "properties": {
+              "account_id": {
+                "default": "",
+                "title": "Account Id",
+                "type": "string"
+              },
+              "name": {
+                "default": "",
+                "title": "Name",
+                "type": "string"
+              },
+              "business_uuid": {
+                "default": "",
+                "title": "Business Uuid",
+                "type": "string"
+              }
+            },
+            "title": "ProviderAccount",
+            "type": "object"
+          },
+          "ProviderConnection": {
+            "properties": {
+              "id": {
+                "default": "",
+                "title": "Id",
+                "type": "string"
+              },
+              "label": {
+                "default": "",
+                "title": "Label",
+                "type": "string"
+              },
+              "accounts": {
+                "items": {
+                  "$ref": "#/$defs/ProviderAccount"
+                },
+                "title": "Accounts",
+                "type": "array"
+              },
+              "default_account_id": {
+                "default": "",
+                "title": "Default Account Id",
+                "type": "string"
+              }
+            },
+            "title": "ProviderConnection",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "connections": {
+            "items": {
+              "$ref": "#/$defs/ProviderConnection"
+            },
+            "title": "Connections",
+            "type": "array"
+          }
+        },
+        "title": "ProviderConnectionList",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "freshbooks"
+    },
+    {
+      "name": "disconnect_freshbooks",
+      "description": "Disconnect a FreshBooks connection: deletes the saved connection (and every account it covered). Nothing in FreshBooks itself is changed.",
+      "action_type": "destructive",
+      "chain_callable": true,
+      "effects": [
+        "freshbooks.connection.removed"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "description": "Which connection to disconnect (see list_connections).",
+            "title": "Connection Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection_id"
+        ],
+        "title": "DisconnectFreshbooksParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "deleted": {
+            "default": false,
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "id": {
+            "default": "",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "title": "DeleteResult",
+        "type": "object"
+      },
+      "event": "freshbooks-connector.disconnect",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "freshbooks"
+    },
+    {
+      "name": "list_entities",
+      "description": "List FreshBooks records of any resource type (clients, invoices, expenses, estimates, items, payments, taxes, staffs) in the connected FreshBooks account.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected FreshBooks account grant to use (see list_connections). Omit if only one is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "account_id": {
+            "default": "",
+            "description": "Which FreshBooks business account to target, if the connection covers several. Omit to use the default account.",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "Resource type: clients, invoices, expenses, estimates, items, payments, taxes, staffs.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "page": {
+            "default": 1,
+            "description": "Page number, 1-based.",
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "per_page": {
+            "default": 30,
+            "description": "Records per page.",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Per Page",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity"
+        ],
+        "title": "ListEntitiesParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "entity": {
+            "default": "",
+            "title": "Entity",
+            "type": "string"
+          },
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Records",
+            "type": "array"
+          }
+        },
+        "title": "EntityList",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "freshbooks"
+    },
+    {
+      "name": "get_entity",
+      "description": "Read one FreshBooks record of any resource type in full by its id.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected FreshBooks account grant to use (see list_connections). Omit if only one is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "account_id": {
+            "default": "",
+            "description": "Which FreshBooks business account to target, if the connection covers several. Omit to use the default account.",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "Resource type, same values as list_entities.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "record_id": {
+            "description": "The record's FreshBooks id.",
+            "title": "Record Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "record_id"
+        ],
+        "title": "GetEntityParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "entity": {
+            "default": "",
+            "title": "Entity",
+            "type": "string"
+          },
+          "record": {
+            "additionalProperties": true,
+            "title": "Record",
+            "type": "object"
+          }
+        },
+        "title": "EntityDetail",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "freshbooks"
+    },
+    {
+      "name": "create_entity",
+      "description": "Create a new FreshBooks record of any writable resource type (clients, invoices, expenses, estimates, items) from a JSON object of its fields.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "freshbooks.entity.created"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected FreshBooks account grant to use (see list_connections). Omit if only one is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "account_id": {
+            "default": "",
+            "description": "Which FreshBooks business account to target, if the connection covers several. Omit to use the default account.",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "Resource type to create: clients, invoices, expenses, estimates, items.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "fields_json": {
+            "description": "JSON object of the fields for the new record, using FreshBooks' own field names.",
+            "title": "Fields Json",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "fields_json"
+        ],
+        "title": "CreateEntityParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "ok": {
+            "default": false,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "record_id": {
+            "default": "",
+            "title": "Record Id",
+            "type": "string"
+          },
+          "record": {
+            "additionalProperties": true,
+            "title": "Record",
+            "type": "object"
+          }
+        },
+        "title": "WriteResult",
+        "type": "object"
+      },
+      "event": "freshbooks-connector.entity.created",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "freshbooks"
+    },
+    {
+      "name": "update_entity",
+      "description": "Update selected fields of an existing FreshBooks record. Only given fields change.",
+      "action_type": "write",
+      "chain_callable": true,
+      "effects": [
+        "freshbooks.entity.updated"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected FreshBooks account grant to use (see list_connections). Omit if only one is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "account_id": {
+            "default": "",
+            "description": "Which FreshBooks business account to target, if the connection covers several. Omit to use the default account.",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "Resource type to update, same values as list_entities.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "record_id": {
+            "description": "The record's FreshBooks id.",
+            "title": "Record Id",
+            "type": "string"
+          },
+          "fields_json": {
+            "description": "JSON object of the fields to change. Only given fields change.",
+            "title": "Fields Json",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "record_id",
+          "fields_json"
+        ],
+        "title": "UpdateEntityParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "ok": {
+            "default": false,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "record_id": {
+            "default": "",
+            "title": "Record Id",
+            "type": "string"
+          },
+          "record": {
+            "additionalProperties": true,
+            "title": "Record",
+            "type": "object"
+          }
+        },
+        "title": "WriteResult",
+        "type": "object"
+      },
+      "event": "freshbooks-connector.entity.updated",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "freshbooks"
+    },
+    {
+      "name": "delete_entity",
+      "description": "Permanently delete a FreshBooks record (invoices, expenses, estimates, items). FreshBooks marks most records as 'deleted' rather than removing them outright, but this is not reversible through the API.",
+      "action_type": "destructive",
+      "chain_callable": true,
+      "effects": [
+        "freshbooks.entity.deleted"
+      ],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected FreshBooks account grant to use (see list_connections). Omit if only one is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "account_id": {
+            "default": "",
+            "description": "Which FreshBooks business account to target, if the connection covers several. Omit to use the default account.",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "entity": {
+            "description": "Resource type to delete: invoices, expenses, estimates, items.",
+            "title": "Entity",
+            "type": "string"
+          },
+          "record_id": {
+            "description": "The record's FreshBooks id.",
+            "title": "Record Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "record_id"
+        ],
+        "title": "DeleteEntityParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "ok": {
+            "default": false,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "record_id": {
+            "default": "",
+            "title": "Record Id",
+            "type": "string"
+          },
+          "record": {
+            "additionalProperties": true,
+            "title": "Record",
+            "type": "object"
+          }
+        },
+        "title": "WriteResult",
+        "type": "object"
+      },
+      "event": "freshbooks-connector.entity.deleted",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "freshbooks"
+    },
+    {
+      "name": "get_revenue_overview",
+      "description": "Value-add report: scan recent FreshBooks invoices and summarize total invoiced/paid/outstanding amounts, broken down by status.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected FreshBooks account grant to use (see list_connections). Omit if only one is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "account_id": {
+            "default": "",
+            "description": "Which FreshBooks business account to target, if the connection covers several. Omit to use the default account.",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "limit": {
+            "default": 100,
+            "description": "Number of recent invoices to scan for the overview.",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "title": "GetRevenueOverviewParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "properties": {
+          "invoice_count": {
+            "default": 0,
+            "title": "Invoice Count",
+            "type": "integer"
+          },
+          "total_invoiced": {
+            "default": 0.0,
+            "title": "Total Invoiced",
+            "type": "number"
+          },
+          "total_paid": {
+            "default": 0.0,
+            "title": "Total Paid",
+            "type": "number"
+          },
+          "total_outstanding": {
+            "default": 0.0,
+            "title": "Total Outstanding",
+            "type": "number"
+          },
+          "by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Status",
+            "type": "object"
+          }
+        },
+        "title": "RevenueOverviewReport",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "freshbooks"
+    },
+    {
+      "name": "get_overdue_invoices",
+      "description": "Value-add report: flag every unpaid FreshBooks invoice overdue by at least a given number of days.",
+      "action_type": "read",
+      "chain_callable": true,
+      "effects": [],
+      "id_projection": "",
+      "params_schema": {
+        "properties": {
+          "connection_id": {
+            "default": "",
+            "description": "Which connected FreshBooks account grant to use (see list_connections). Omit if only one is connected.",
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "account_id": {
+            "default": "",
+            "description": "Which FreshBooks business account to target, if the connection covers several. Omit to use the default account.",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "min_days_overdue": {
+            "default": 1,
+            "description": "Minimum number of days past due date to flag.",
+            "minimum": 0,
+            "title": "Min Days Overdue",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 100,
+            "description": "Number of recent invoices to scan.",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "title": "GetOverdueInvoicesParams",
+        "type": "object"
+      },
+      "return_schema": {
+        "$defs": {
+          "OverdueInvoice": {
+            "properties": {
+              "invoice_id": {
+                "default": "",
+                "title": "Invoice Id",
+                "type": "string"
+              },
+              "client_name": {
+                "default": "",
+                "title": "Client Name",
+                "type": "string"
+              },
+              "amount_due": {
+                "default": 0.0,
+                "title": "Amount Due",
+                "type": "number"
+              },
+              "due_date": {
+                "default": "",
+                "title": "Due Date",
+                "type": "string"
+              },
+              "days_overdue": {
+                "default": 0,
+                "title": "Days Overdue",
+                "type": "integer"
+              }
+            },
+            "title": "OverdueInvoice",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "total_overdue_amount": {
+            "default": 0.0,
+            "title": "Total Overdue Amount",
+            "type": "number"
+          },
+          "invoices": {
+            "items": {
+              "$ref": "#/$defs/OverdueInvoice"
+            },
+            "title": "Invoices",
+            "type": "array"
+          }
+        },
+        "title": "OverdueInvoicesReport",
+        "type": "object"
+      },
+      "event": "",
+      "background": false,
+      "long_running": false,
+      "scopes": [],
+      "owner_chat_tool": "freshbooks"
+    }
+  ],
+  "signals": [],
+  "schedules": [],
+  "required_scopes": [],
+  "icon_size_bytes": 677,
+  "webhooks": [
+    {
+      "path": "/callback",
+      "method": "POST",
+      "secret_header": ""
+    }
+  ],
+  "lifecycle": {
+    "health_check": {
+      "interval_sec": 60
+    }
+  },
+  "secrets": [
+    {
+      "name": "freshbooks_connections",
+      "description": "JSON array of connected FreshBooks OAuth grants: client_id/client_secret (your own FreshBooks app), access_token, refresh_token, expiry timestamps, the list of granted accounts (account_id, name, business_uuid), default_account_id, and label. Managed through connect_freshbooks / disconnect_freshbooks -- you should not need to edit this directly.",
+      "required": true,
+      "write_mode": "both",
+      "max_bytes": 65536,
+      "scope": "user",
+      "rotation_hint_days": 90
+    },
+    {
+      "name": "freshbooks_pending",
+      "description": "JSON array of in-flight FreshBooks OAuth connection attempts (client_id/client_secret captured at connect_freshbooks time, keyed by a pending id used as the OAuth `state`), consumed and removed by the callback webhook once the code-for-token exchange completes. write_mode='extension': only connector code writes this, never the Panel UI directly.",
+      "required": false,
+      "write_mode": "extension",
+      "max_bytes": 16384,
+      "scope": "user"
+    }
+  ],
+  "panels": [
+    {
+      "panel_id": "secrets",
+      "slot": "right",
+      "title": "Secrets",
+      "tree": {},
+      "icon": "KeyRound",
+      "refresh": "manual",
+      "center_overlay": false
+    },
+    {
+      "panel_id": "freshbooks_connect",
+      "slot": "left",
+      "title": "FreshBooks",
+      "tree": {},
+      "icon": "🧮",
+      "refresh": "manual",
+      "center_overlay": false,
+      "default_width": 320,
+      "min_width": 260,
+      "max_width": 420
+    },
+    {
+      "panel_id": "freshbooks_connect_help",
+      "slot": "center",
+      "title": "How to connect FreshBooks",
+      "tree": {},
+      "icon": "",
+      "refresh": "manual",
+      "center_overlay": true
+    },
+    {
+      "panel_id": "freshbooks_settings",
+      "slot": "center",
+      "title": "",
+      "tree": {},
+      "icon": "",
+      "refresh": "manual",
+      "center_overlay": false
+    }
+  ]
+}
