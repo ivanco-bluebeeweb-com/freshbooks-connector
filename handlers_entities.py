@@ -48,7 +48,7 @@ async def list_entities(ctx, params: ListEntitiesParams) -> ActionResult:
         action=f"list {params.entity}",
     )
     records = fc.unwrap_list(data, plural_key)
-    return ActionResult.ok(EntityList(entity=params.entity, count=len(records), records=records))
+    return ActionResult.success(EntityList(entity=params.entity, count=len(records), records=records), summary="Entities listed.")
 
 
 @chat.function(
@@ -70,7 +70,7 @@ async def get_entity(ctx, params: GetEntityParams) -> ActionResult:
         action=f"get {params.entity}",
     )
     record = fc.unwrap_single(data, singular_key)
-    return ActionResult.ok(EntityDetail(entity=params.entity, record=record))
+    return ActionResult.success(EntityDetail(entity=params.entity, record=record), summary="Entity retrieved.")
 
 
 @chat.function(
@@ -95,7 +95,7 @@ async def create_entity(ctx, params: CreateEntityParams) -> ActionResult:
     body = {singular_key: fields}
     data = await fc.request(ctx, conn, account_id, "POST", path, json_body=body, action=f"create {params.entity}")
     record = fc.unwrap_single(data, singular_key)
-    return ActionResult.ok(WriteResult(ok=True, record_id=str(record.get(id_field, "")), record=record))
+    return ActionResult.success(WriteResult(ok=True, record_id=str(record.get(id_field, "")), record=record), summary="Entity created.")
 
 
 @chat.function(
@@ -122,7 +122,7 @@ async def update_entity(ctx, params: UpdateEntityParams) -> ActionResult:
         action=f"update {params.entity}",
     )
     record = fc.unwrap_single(data, singular_key)
-    return ActionResult.ok(WriteResult(ok=True, record_id=params.record_id, record=record))
+    return ActionResult.success(WriteResult(ok=True, record_id=params.record_id, record=record), summary="Entity updated.")
 
 
 @chat.function(
@@ -146,4 +146,4 @@ async def delete_entity(ctx, params: DeleteEntityParams) -> ActionResult:
         ctx, conn, account_id, "PUT", f"{path}/{params.record_id}", json_body=body,
         action=f"delete {params.entity}",
     )
-    return ActionResult.ok(WriteResult(ok=True, record_id=params.record_id))
+    return ActionResult.success(WriteResult(ok=True, record_id=params.record_id), summary="Entity deleted.")

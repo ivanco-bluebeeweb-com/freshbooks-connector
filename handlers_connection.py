@@ -154,7 +154,7 @@ async def connect_freshbooks(ctx, params: ConnectFreshbooksParams) -> ActionResu
     all_pending.append(pending)
     await _save_pending(ctx, all_pending)
     authorize_url = fc.build_authorize_url(params.client_id.strip(), redirect_uri, pending_id)
-    return ActionResult.ok(ConnectFreshbooksResult(authorize_url=authorize_url, pending_id=pending_id))
+    return ActionResult.success(ConnectFreshbooksResult(authorize_url=authorize_url, pending_id=pending_id), summary="Freshbooks connected.")
 
 
 @ext.webhook("callback")
@@ -222,7 +222,7 @@ async def handle_oauth_callback(ctx, headers, body, query_params):
 async def list_connections(ctx, params: NoParams) -> ActionResult:
     """List the connected FreshBooks accounts."""
     connections = await _load_connections(ctx)
-    return ActionResult.ok(ProviderConnectionList(connections=[_connection_to_entity(c) for c in connections]))
+    return ActionResult.success(ProviderConnectionList(connections=[_connection_to_entity(c) for c in connections]), summary="Connections listed.")
 
 
 async def _load_pending(ctx) -> list[dict]:
@@ -257,4 +257,4 @@ async def disconnect_freshbooks(ctx, params: DisconnectFreshbooksParams) -> Acti
     if len(remaining) == len(connections):
         return ActionResult.error("No such FreshBooks connection.", code="FRESHBOOKS_NOT_CONNECTED")
     await _save_connections(ctx, remaining)
-    return ActionResult.ok(DeleteResult(deleted=True, id=params.connection_id))
+    return ActionResult.success(DeleteResult(deleted=True, id=params.connection_id), summary="Freshbooks disconnected.")

@@ -45,13 +45,13 @@ async def get_revenue_overview(ctx, params: GetRevenueOverviewParams) -> ActionR
         total_paid += float(paid.get("amount", 0) or 0)
         status = str(inv.get("v3_status") or inv.get("status") or "unknown")
         by_status[status] = by_status.get(status, 0) + 1
-    return ActionResult.ok(RevenueOverviewReport(
+    return ActionResult.success(RevenueOverviewReport(
         invoice_count=len(invoices),
         total_invoiced=round(total_invoiced, 2),
         total_paid=round(total_paid, 2),
         total_outstanding=round(total_invoiced - total_paid, 2),
         by_status=by_status,
-    ))
+    ), summary="Revenue overview retrieved.")
 
 
 @chat.function(
@@ -102,6 +102,6 @@ async def get_overdue_invoices(ctx, params: GetOverdueInvoicesParams) -> ActionR
             days_overdue=days_overdue,
         ))
     flagged.sort(key=lambda r: r.days_overdue, reverse=True)
-    return ActionResult.ok(OverdueInvoicesReport(
+    return ActionResult.success(OverdueInvoicesReport(
         count=len(flagged), total_overdue_amount=round(total_overdue, 2), invoices=flagged,
-    ))
+    ), summary="Overdue invoices retrieved.")
